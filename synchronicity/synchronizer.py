@@ -6,9 +6,9 @@ import inspect
 import queue
 import threading
 import time
-import traceback
 
 from .contextlib import AsyncGeneratorContextManager
+from .utils import filter_traceback
 
 _BUILTIN_ASYNC_METHODS = {
     '__aiter__': '__iter__',
@@ -76,6 +76,7 @@ class Synchronizer:
     def _is_async_context(self):
         return bool(self._get_running_loop())
 
+    @filter_traceback
     def _run_function_sync(self, coro, return_future):
         loop = self._get_loop()
         fut = asyncio.run_coroutine_threadsafe(coro, loop)
@@ -86,6 +87,7 @@ class Synchronizer:
         else:
             return fut.result()
 
+    @filter_traceback
     async def _run_function_async(self, coro):
         current_loop = self._get_running_loop()
         loop = self._get_loop()
@@ -96,6 +98,7 @@ class Synchronizer:
         a_fut = asyncio.wrap_future(c_fut)
         return await a_fut
 
+    @filter_traceback
     def _run_generator_sync(self, gen):
         value, is_exc = None, False
         while True:
@@ -113,6 +116,7 @@ class Synchronizer:
                 value = exc
                 is_exc = True
 
+    @filter_traceback
     async def _run_generator_async(self, gen):
         value, is_exc = None, False
         while True:
@@ -131,6 +135,7 @@ class Synchronizer:
                 is_exc = True
 
     def _wrap_callable(self, f, return_future=None):
+        @filter_traceback
         @functools.wraps(f)
         def f_wrapped(*args, **kwargs):
             res = f(*args, **kwargs)
@@ -149,6 +154,7 @@ class Synchronizer:
                     return self._run_generator_sync(res)
             else:
                 return res
+
 
         return f_wrapped
 
